@@ -7,6 +7,8 @@ idf_component_register(
     SRCS
         "main.c"
         "dht22.c"
+        "oled.c"
+        "alarm.c"
     INCLUDE_DIRS
         "."
 )
