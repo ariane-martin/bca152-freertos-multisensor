@@ -13,6 +13,7 @@ idf_component_register(
         "system_state.cpp"
         "sensors.cpp"
         "motion.cpp"
+        "input.cpp"
     INCLUDE_DIRS
         "."
         "../include"

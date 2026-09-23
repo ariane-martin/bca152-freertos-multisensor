@@ -14,20 +14,8 @@
 #include "system_state.h"
 #include "sensors.h"
 #include "motion.h"
+#include "input.h"  
 
-typedef enum
-{
-    DISPLAY_TEMPERATURE,
-    DISPLAY_HUMIDITY,
-    DISPLAY_LIGHT,
-    DISPLAY_MOTION
-} DisplayMode;
-
-static DisplayMode current_display_mode = DISPLAY_TEMPERATURE;
-
-#define ENCODER_CLK GPIO_NUM_32
-#define ENCODER_DT  GPIO_NUM_33
-#define ENCODER_SW  GPIO_NUM_25
 #define BUZZER_PIN GPIO_NUM_26
 
 /* Temporary foundation task */
@@ -178,7 +166,7 @@ void display_task(void *pvParameters)
             oled_set_cursor(0, 0);
             oled_write_string("ROOM MONITOR");
 
-            if (current_display_mode == DISPLAY_TEMPERATURE)
+            if (input_get_display_mode() == 0)
             {
                 snprintf(
                     valueText,
@@ -193,7 +181,7 @@ void display_task(void *pvParameters)
                 oled_set_cursor(4, 0);
                 oled_write_string(valueText);
             }
-            else if (current_display_mode == DISPLAY_HUMIDITY)
+            else if (input_get_display_mode() == 1)
             {
                 snprintf(
                     valueText,
@@ -208,7 +196,7 @@ void display_task(void *pvParameters)
                 oled_set_cursor(4, 0);
                 oled_write_string(valueText);
             }
-            else if (current_display_mode == DISPLAY_LIGHT)
+            else if (input_get_display_mode() == 2)
             {
                 snprintf(
                     valueText,
@@ -223,7 +211,7 @@ void display_task(void *pvParameters)
                 oled_set_cursor(4, 0);
                 oled_write_string(valueText);
             }
-            else if (current_display_mode == DISPLAY_MOTION)
+            else if (input_get_display_mode() == 3)
             {
                 oled_set_cursor(2, 0);
                 oled_write_string("MOTION");
@@ -240,68 +228,6 @@ void display_task(void *pvParameters)
                 }
             }
         }
-    }
-}
-
-void input_task(void *pvParameters)
-{
-    gpio_config_t encoder_config = {
-        .pin_bit_mask =
-            (1ULL << ENCODER_CLK) |
-            (1ULL << ENCODER_DT) |
-            (1ULL << ENCODER_SW),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
-
-    gpio_config(&encoder_config);
-
-    int last_clk = gpio_get_level(ENCODER_CLK);
-
-    while (1)
-    {
-        if (!system_is_active())
-    {
-        last_clk = gpio_get_level(ENCODER_CLK);
-        vTaskDelay(pdMS_TO_TICKS(50));
-        continue;
-    }
-
-        int current_clk = gpio_get_level(ENCODER_CLK);
-
-        if (current_clk != last_clk && current_clk == 1)
-        {
-            int dt = gpio_get_level(ENCODER_DT);
-
-            if (dt != current_clk)
-            {
-                /* Clockwise */
-                current_display_mode =
-                    (current_display_mode + 1) % 4;
-
-                xSemaphoreTake(serialMutex, portMAX_DELAY);
-                printf("Encoder CW -> page %d\n",
-                       current_display_mode);
-                xSemaphoreGive(serialMutex);
-            }
-            else
-            {
-                /* Counterclockwise */
-                current_display_mode =
-                (current_display_mode + 3) % 4;
-
-                xSemaphoreTake(serialMutex, portMAX_DELAY);
-                printf("Encoder CCW -> page %d\n",
-                       current_display_mode);
-                xSemaphoreGive(serialMutex);
-            }
-        }
-
-        last_clk = current_clk;
-
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
