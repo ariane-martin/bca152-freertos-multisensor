@@ -9,6 +9,9 @@ idf_component_register(
         "dht22.c"
         "oled.c"
         "alarm.c"
+        "rtos_objects.cpp"
+        "system_state.cpp"
     INCLUDE_DIRS
         "."
+        "../include"
 )

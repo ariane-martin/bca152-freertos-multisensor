@@ -10,6 +10,8 @@
 #include "freertos/queue.h"
 #include "oled.h"
 #include "alarm.h"
+#include "rtos_objects.h"
+#include "system_state.h"
 
 typedef struct
 {
@@ -29,28 +31,14 @@ typedef enum
 
 static DisplayMode current_display_mode = DISPLAY_TEMPERATURE;
 
-typedef enum
-{
-    SYSTEM_ACTIVE,
-    SYSTEM_INACTIVE
-} SystemState;
-
-static SystemState current_system_state = SYSTEM_ACTIVE;
-
 #define ENCODER_CLK GPIO_NUM_32
 #define ENCODER_DT  GPIO_NUM_33
 #define ENCODER_SW  GPIO_NUM_25
 #define PIR_PIN GPIO_NUM_27
 #define BUZZER_PIN GPIO_NUM_26
-#define EVENT_ACTIVE BIT0
-#define EVENT_MOTION BIT1
-#define EVENT_ALARM  BIT2
 
 /* ADC handle used by SensorTask */
 static adc_oneshot_unit_handle_t adc_handle;
-static QueueHandle_t sensor_queue;
-static EventGroupHandle_t system_events;
-static SemaphoreHandle_t serialMutex;
 static float latest_temperature = 0.0f;
 
 /* Temporary foundation task */
@@ -178,7 +166,7 @@ void alarm_task(void *pvParameters)
 
     while (1)
     {
-        if (current_system_state == SYSTEM_ACTIVE)
+        if (system_is_active())
         {
             AlarmState alarm =
                 evaluateTemperature(latest_temperature);
@@ -253,7 +241,7 @@ void display_task(void *pvParameters)
                 portMAX_DELAY) == pdPASS)
         {
 
-        if (current_system_state == SYSTEM_INACTIVE)
+        if (!system_is_active())
     {
         if (oled_is_on)
     {
@@ -368,7 +356,7 @@ void input_task(void *pvParameters)
 
     while (1)
     {
-        if (current_system_state == SYSTEM_INACTIVE)
+        if (!system_is_active())
     {
         last_clk = gpio_get_level(ENCODER_CLK);
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -441,10 +429,9 @@ void motion_task(void *pvParameters)
             lastMotionTime = xTaskGetTickCount();
 
             /* Wake the system if it was inactive */
-            if (current_system_state == SYSTEM_INACTIVE)
+            if (!system_is_active())
             {
-                current_system_state = SYSTEM_ACTIVE;
-                xEventGroupSetBits(system_events, EVENT_ACTIVE);
+                system_state_set(SYSTEM_ACTIVE);
                 xSemaphoreTake(serialMutex, portMAX_DELAY);
                 printf("SYSTEM STATE: ACTIVE\n");
                 xSemaphoreGive(serialMutex);
@@ -457,11 +444,10 @@ void motion_task(void *pvParameters)
             TickType_t currentTime = xTaskGetTickCount();
 
             /* No motion for 15 seconds */
-            if ((current_system_state == SYSTEM_ACTIVE) &&
+            if ((system_is_active()) &&
                 ((currentTime - lastMotionTime) >= pdMS_TO_TICKS(15000)))
             {
-                current_system_state = SYSTEM_INACTIVE;
-                xEventGroupClearBits(system_events, EVENT_ACTIVE);
+                system_state_set(SYSTEM_INACTIVE);
                 xSemaphoreTake(serialMutex, portMAX_DELAY);
                 printf("SYSTEM STATE: INACTIVE\n");
                 xSemaphoreGive(serialMutex);
@@ -489,7 +475,7 @@ void app_main(void)
     }
 
     /* System starts ACTIVE */
-    xEventGroupSetBits(system_events, EVENT_ACTIVE);
+    system_state_init();
 
     /* Create Serial mutex */
     serialMutex = xSemaphoreCreateMutex();
