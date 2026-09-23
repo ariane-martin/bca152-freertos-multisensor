@@ -1,47 +1,18 @@
 #include <stdio.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
-#include "dht22.h"
-#include "driver/gpio.h"
-#include "esp_adc/adc_oneshot.h"
-#include <stdbool.h>
 #include "freertos/queue.h"
-#include "oled.h"
+
 #include "alarm.h"
-#include "rtos_objects.h"
-#include "system_state.h"
-#include "sensors.h"
-#include "motion.h"
-#include "input.h"  
 #include "display.h"
-#include "alarm.h"
-
-/* Temporary foundation task */
-void task_a(void *pvParameters) 
-{
-    while (1)
-    {
-        xSemaphoreTake(serialMutex, portMAX_DELAY);
-        printf("Task A running\n");
-        xSemaphoreGive(serialMutex);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-/* Temporary foundation task */
-void task_b(void *pvParameters)
-{
-    while (1)
-    {
-        xSemaphoreTake(serialMutex, portMAX_DELAY);
-        printf("Task B running\n");
-        xSemaphoreGive(serialMutex);
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
+#include "input.h"
+#include "motion.h"
+#include "rtos_objects.h"
+#include "sensors.h"
+#include "system_state.h"
 
 void app_main(void)
 {
@@ -104,25 +75,6 @@ void app_main(void)
     NULL,
     3,
     NULL
-    );
-
-    /* Foundation tasks */
-    xTaskCreate(
-        task_a,
-        "TaskA",
-        2048,
-        NULL,
-        1,
-        NULL
-    );
-
-    xTaskCreate(
-        task_b,
-        "TaskB",
-        2048,
-        NULL,
-        1,
-        NULL
     );
 
     xTaskCreate(
