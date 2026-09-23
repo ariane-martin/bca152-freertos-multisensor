@@ -10,11 +10,13 @@
 
 #include "driver/gpio.h"
 
+#include "display_mode.h"
+
 #define ENCODER_CLK GPIO_NUM_32
 #define ENCODER_DT  GPIO_NUM_33
 #define ENCODER_SW  GPIO_NUM_25
 
-static int current_display_mode = 0;
+static DisplayMode current_display_mode = DISPLAY_TEMPERATURE;
 
 static TaskHandle_t input_task_handle = NULL;
 
@@ -127,7 +129,7 @@ void input_task(void *pvParameters)
                 if (dt == 0)
                 {
                     current_display_mode =
-                        (current_display_mode + 1) % 4;
+                        nextDisplayMode(current_display_mode);
 
                     xSemaphoreTake(
                         serialMutex,
@@ -144,7 +146,7 @@ void input_task(void *pvParameters)
                 else
                 {
                     current_display_mode =
-                        (current_display_mode + 3) % 4;
+                        previousDisplayMode(current_display_mode);
 
                     xSemaphoreTake(
                         serialMutex,

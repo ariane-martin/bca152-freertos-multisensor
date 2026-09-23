@@ -16,6 +16,7 @@ idf_component_register(
         "input.cpp"
         "display.cpp"
         "alarm.cpp"
+        "display_mode.cpp"
     INCLUDE_DIRS
         "."
         "../include"
