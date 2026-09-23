@@ -13,6 +13,7 @@
 #include "rtos_objects.h"
 #include "system_state.h"
 #include "sensors.h"
+#include "motion.h"
 
 typedef enum
 {
@@ -27,7 +28,6 @@ static DisplayMode current_display_mode = DISPLAY_TEMPERATURE;
 #define ENCODER_CLK GPIO_NUM_32
 #define ENCODER_DT  GPIO_NUM_33
 #define ENCODER_SW  GPIO_NUM_25
-#define PIR_PIN GPIO_NUM_27
 #define BUZZER_PIN GPIO_NUM_26
 
 /* Temporary foundation task */
@@ -302,66 +302,6 @@ void input_task(void *pvParameters)
         last_clk = current_clk;
 
         vTaskDelay(pdMS_TO_TICKS(10));
-    }
-}
-
-void motion_task(void *pvParameters)
-{
-    gpio_config_t pir_config = {
-        .pin_bit_mask = (1ULL << PIR_PIN),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
-
-    gpio_config(&pir_config);
-
-    TickType_t lastMotionTime = xTaskGetTickCount();
-
-    xSemaphoreTake(serialMutex, portMAX_DELAY);
-    printf("MotionTask started - SYSTEM ACTIVE\n");
-    xSemaphoreGive(serialMutex);
-
-    while (1)
-    {
-        int motion = gpio_get_level(PIR_PIN);
-
-        if (motion == 1)
-        {
-            xEventGroupSetBits(system_events, EVENT_MOTION);
-
-            /* Motion detected: reset inactivity timer */
-            lastMotionTime = xTaskGetTickCount();
-
-            /* Wake the system if it was inactive */
-            if (!system_is_active())
-            {
-                system_state_set(SYSTEM_ACTIVE);
-                xSemaphoreTake(serialMutex, portMAX_DELAY);
-                printf("SYSTEM STATE: ACTIVE\n");
-                xSemaphoreGive(serialMutex);
-            }
-        }
-        else
-        {
-            xEventGroupClearBits(system_events, EVENT_MOTION);
-            
-            TickType_t currentTime = xTaskGetTickCount();
-
-            /* No motion for 15 seconds */
-            if ((system_is_active()) &&
-                ((currentTime - lastMotionTime) >= pdMS_TO_TICKS(15000)))
-            {
-                system_state_set(SYSTEM_INACTIVE);
-                xSemaphoreTake(serialMutex, portMAX_DELAY);
-                printf("SYSTEM STATE: INACTIVE\n");
-                xSemaphoreGive(serialMutex);
-            }
-        }
-
-        /* MotionTask blocks briefly instead of busy looping */
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 

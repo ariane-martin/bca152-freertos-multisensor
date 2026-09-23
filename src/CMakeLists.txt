@@ -12,6 +12,7 @@ idf_component_register(
         "rtos_objects.cpp"
         "system_state.cpp"
         "sensors.cpp"
+        "motion.cpp"
     INCLUDE_DIRS
         "."
         "../include"
