@@ -16,8 +16,7 @@
 #include "motion.h"
 #include "input.h"  
 #include "display.h"
-
-#define BUZZER_PIN GPIO_NUM_26
+#include "alarm.h"
 
 /* Temporary foundation task */
 void task_a(void *pvParameters) 
@@ -41,77 +40,6 @@ void task_b(void *pvParameters)
         xSemaphoreGive(serialMutex);
 
         vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-void alarm_task(void *pvParameters)
-{
-    gpio_config_t buzzer_config = {
-        .pin_bit_mask = (1ULL << BUZZER_PIN),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
-
-    gpio_config(&buzzer_config);
-    gpio_set_level(BUZZER_PIN, 0);
-
-    AlarmState previous_alarm = ALARM_NORMAL;
-
-    while (1)
-    {
-        if (system_is_active())
-        {
-            AlarmState alarm =
-                evaluateTemperature(sensors_get_latest_temperature());
-
-            if (alarm != previous_alarm)
-            {
-                if (alarm == ALARM_LOW_TEMPERATURE)
-                {
-                    xSemaphoreTake(serialMutex, portMAX_DELAY);
-                    printf("ALARM: TEMPERATURE TOO LOW\n");
-                    xSemaphoreGive(serialMutex);
-                }
-                else if (alarm == ALARM_HIGH_TEMPERATURE)
-                {
-                    xSemaphoreTake(serialMutex, portMAX_DELAY);
-                    printf("ALARM: TEMPERATURE TOO HIGH\n");
-                    xSemaphoreGive(serialMutex);
-                }
-                else
-                {
-                    xSemaphoreTake(serialMutex, portMAX_DELAY);
-                    printf("ALARM: TEMPERATURE NORMAL\n");
-                    xSemaphoreGive(serialMutex);
-                }
-
-                previous_alarm = alarm;
-            }
-
-            if (alarm != ALARM_NORMAL)
-            {
-            xEventGroupSetBits(system_events, EVENT_ALARM);
-            }
-            else
-            {
-                xEventGroupClearBits(system_events, EVENT_ALARM);
-            }
-
-            gpio_set_level(
-                BUZZER_PIN,
-                alarm != ALARM_NORMAL
-            );
-        }
-        else
-        {
-            xEventGroupClearBits(system_events, EVENT_ALARM);
-            gpio_set_level(BUZZER_PIN, 0);
-            previous_alarm = ALARM_NORMAL;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
