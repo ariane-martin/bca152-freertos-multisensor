@@ -11,6 +11,7 @@ idf_component_register(
         "alarm.c"
         "rtos_objects.cpp"
         "system_state.cpp"
+        "sensors.cpp"
     INCLUDE_DIRS
         "."
         "../include"

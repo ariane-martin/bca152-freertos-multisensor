@@ -12,14 +12,7 @@
 #include "alarm.h"
 #include "rtos_objects.h"
 #include "system_state.h"
-
-typedef struct
-{
-    float temperature;
-    float humidity;
-    int lightLevel;
-    bool motionDetected;
-} SensorData;
+#include "sensors.h"
 
 typedef enum
 {
@@ -36,10 +29,6 @@ static DisplayMode current_display_mode = DISPLAY_TEMPERATURE;
 #define ENCODER_SW  GPIO_NUM_25
 #define PIR_PIN GPIO_NUM_27
 #define BUZZER_PIN GPIO_NUM_26
-
-/* ADC handle used by SensorTask */
-static adc_oneshot_unit_handle_t adc_handle;
-static float latest_temperature = 0.0f;
 
 /* Temporary foundation task */
 void task_a(void *pvParameters) 
@@ -61,91 +50,8 @@ void task_b(void *pvParameters)
         xSemaphoreTake(serialMutex, portMAX_DELAY);
         printf("Task B running\n");
         xSemaphoreGive(serialMutex);
+
         vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-/* Sensor acquisition task */
-void sensor_task(void *pvParameters)
-{
-    TickType_t lastWakeTime = xTaskGetTickCount();
-
-    while (1)
-    {
-        float temperature = 0.0f;
-        float humidity = 0.0f;
-        int raw_light = 0;
-
-        /* Read LDR */
-        adc_oneshot_read(
-            adc_handle,
-            ADC_CHANNEL_6,
-            &raw_light
-        );
-
-        /* Convert ADC reading to relative 0-100% light level */
-        int light_level = (raw_light * 100) / 4095;
-
-        /* Read DHT22 */
-        esp_err_t result =
-            dht22_read(
-                GPIO_NUM_15,
-                &temperature,
-                &humidity
-            );
-
-        xSemaphoreTake(serialMutex, portMAX_DELAY);
-
-        printf("\n--- SensorTask ---\n");
-        printf("LDR Raw: %d\n", raw_light);
-        printf("Light Level: %d %%\n", light_level);
-
-        if (result == ESP_OK)
-    {
-        printf("Temperature: %.2f C\n", temperature);
-        printf("Humidity: %.2f %%\n", humidity);
-
-        latest_temperature = temperature;
-    }
-        else
-    {
-        printf(
-        "DHT22 read failed: %s\n",
-        esp_err_to_name(result)
-        );
-    }
-        xSemaphoreGive(serialMutex);
-
-        SensorData data;
-
-        data.temperature = temperature;
-        data.humidity = humidity;
-        data.lightLevel = light_level;
-
-        EventBits_t event_bits = xEventGroupGetBits(system_events);
-        data.motionDetected = (event_bits & EVENT_MOTION) != 0;
-
-
-        if (xQueueSend(
-                sensor_queue,
-                &data,
-                pdMS_TO_TICKS(100)) == pdPASS)
-        {
-            xSemaphoreTake(serialMutex, portMAX_DELAY);
-            printf("Sensor data sent to queue\n");
-            xSemaphoreGive(serialMutex);
-        }
-        else
-        {
-            xSemaphoreTake(serialMutex, portMAX_DELAY);
-            printf("Sensor queue full\n");
-            xSemaphoreGive(serialMutex);
-        }
-
-        vTaskDelayUntil(
-            &lastWakeTime,
-            pdMS_TO_TICKS(2000)
-        );
     }
 }
 
@@ -169,7 +75,7 @@ void alarm_task(void *pvParameters)
         if (system_is_active())
         {
             AlarmState alarm =
-                evaluateTemperature(latest_temperature);
+                evaluateTemperature(sensors_get_latest_temperature());
 
             if (alarm != previous_alarm)
             {
@@ -492,31 +398,7 @@ void app_main(void)
     return;
     }
 
-    /* Configure ADC1 for the LDR */
-    adc_oneshot_unit_init_cfg_t init_config = {
-        .unit_id = ADC_UNIT_1,
-    };
-
-    ESP_ERROR_CHECK(
-        adc_oneshot_new_unit(
-            &init_config,
-            &adc_handle
-        )
-    );
-
-    /* GPIO34 = ADC1 Channel 6 */
-    adc_oneshot_chan_cfg_t channel_config = {
-        .atten = ADC_ATTEN_DB_12,
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
-    };
-
-    ESP_ERROR_CHECK(
-        adc_oneshot_config_channel(
-            adc_handle,
-            ADC_CHANNEL_6,
-            &channel_config
-        )
-    );
+    sensors_init();
 
     /* Create SensorTask */
     xTaskCreate(
