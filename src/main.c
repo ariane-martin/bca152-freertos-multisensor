@@ -14,6 +14,8 @@
 #include "sensors.h"
 #include "system_state.h"
 
+#ifndef UNIT_TEST
+
 void app_main(void)
 {
     printf("BCA152 FreeRTOS Multisensor\n");
@@ -95,3 +97,5 @@ void app_main(void)
     NULL
     );
 }
+
+#endif
