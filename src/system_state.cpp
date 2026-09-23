@@ -32,3 +32,22 @@ bool system_is_active(void)
 {
     return current_system_state == SYSTEM_ACTIVE;
 }
+
+SystemState evaluateSystemState(
+    SystemState currentState,
+    bool motionDetected,
+    bool inactivityTimeout
+)
+{
+    if (motionDetected)
+    {
+        return SYSTEM_ACTIVE;
+    }
+
+    if (currentState == SYSTEM_ACTIVE && inactivityTimeout)
+    {
+        return SYSTEM_INACTIVE;
+    }
+
+    return currentState;
+}

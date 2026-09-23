@@ -22,4 +22,10 @@ SystemState system_state_get(void);
 }
 #endif
 
+SystemState evaluateSystemState(
+    SystemState currentState,
+    bool motionDetected,
+    bool inactivityTimeout
+);
+
 #endif
