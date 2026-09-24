@@ -181,7 +181,7 @@ void oled_write_string(const char *text)
         }
         else if (c == '.')
         {
-            uint8_t dot[5] = {0x00,0x60,0x60,0x00,0x00};
+            const uint8_t dot[5] = {0x00,0x60,0x60,0x00,0x00};
             memcpy(character, dot, 5);
         }
         else if (c == ' ')
