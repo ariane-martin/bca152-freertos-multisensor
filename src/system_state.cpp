@@ -30,5 +30,6 @@ SystemState system_state_get(void)
 
 bool system_is_active(void)
 {
-    return current_system_state == SYSTEM_ACTIVE;
+    EventBits_t bits = xEventGroupGetBits(system_events);
+    return (bits & EVENT_ACTIVE) != 0;
 }
