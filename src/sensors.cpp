@@ -70,7 +70,7 @@ void sensor_task(void *pvParameters)
         );
 
         /* Convert ADC reading to relative 0-100% light level */
-        int light_level = (raw_light * 100) / 4095;
+        int light_level = 100 - ((raw_light * 100) / 4095);
 
         /* Read DHT22 */
         esp_err_t result =
