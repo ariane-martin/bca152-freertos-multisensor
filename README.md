@@ -279,9 +279,11 @@ bca152-freertos-multisensor/
 │   └── system_state_logic.cpp
 │
 ├── docs/
-│   └── images/
-│       ├── finished-system.png
-│       └── wokwi-circuit.png
+│   ├── images/
+│   │   ├── finished-system.png
+│   │   └── wokwi-circuit.png
+│   └── videos/
+│       └── final-testing.mp4
 │
 ├── test/
 │   └── test/
@@ -409,6 +411,12 @@ The complete system was manually verified in Wokwi in addition to automated unit
 | FT-08 | Generate PIR motion | System is ACTIVE | Motion maintained or returned the system to ACTIVE | PASS |
 | FT-09 | Leave system without motion for approximately 15 seconds | System becomes INACTIVE | System entered INACTIVE and OLED turned off | PASS |
 | FT-10 | Generate motion while INACTIVE | System returns to ACTIVE | System returned to ACTIVE and OLED turned on | PASS |
+
+### Functional Demonstration Video
+
+The following screen recording demonstrates the functional verification of the system, including sensor updates, OLED page navigation, temperature alarm behavior, ACTIVE/INACTIVE transitions, and PIR-based wake-up.
+
+[▶ Watch the Functional Testing Video](docs/videos/final-testing.mp4)
 
 Functional testing also revealed an error in the original LDR percentage mapping. The calculation was corrected so that greater simulated illumination produces a greater relative light percentage. This demonstrates how functional verification was used to identify and correct an implementation issue.
 
