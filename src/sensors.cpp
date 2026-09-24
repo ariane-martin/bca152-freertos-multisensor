@@ -18,7 +18,6 @@ extern "C" {
 #include "esp_err.h"
 
 static adc_oneshot_unit_handle_t adc_handle;
-static float latest_temperature = 0.0f;
 
 void sensors_init(void)
 {
@@ -45,11 +44,6 @@ void sensors_init(void)
             &channel_config
         )
     );
-}
-
-float sensors_get_latest_temperature(void)
-{
-    return latest_temperature;
 }
 
 void sensor_task(void *pvParameters)
@@ -90,8 +84,6 @@ void sensor_task(void *pvParameters)
         {
             printf("Temperature: %.2f C\n", temperature);
             printf("Humidity: %.2f %%\n", humidity);
-
-            latest_temperature = temperature;
         }
         else
         {
@@ -125,6 +117,17 @@ void sensor_task(void *pvParameters)
         {
             xSemaphoreTake(serialMutex, portMAX_DELAY);
             printf("Sensor queue full\n");
+            xSemaphoreGive(serialMutex);
+        }
+
+        /* Send a copy of the sensor data to AlarmTask */
+        if (xQueueSend(
+                alarm_queue,
+                &data,
+                pdMS_TO_TICKS(100)) != pdPASS)
+        {
+            xSemaphoreTake(serialMutex, portMAX_DELAY);
+            printf("Alarm queue full\n");
             xSemaphoreGive(serialMutex);
         }
 

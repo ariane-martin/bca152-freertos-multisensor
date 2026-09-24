@@ -12,5 +12,6 @@
 
 // Shared FreeRTOS objects
 extern QueueHandle_t sensor_queue;
+extern QueueHandle_t alarm_queue;
 extern EventGroupHandle_t system_events;
 extern SemaphoreHandle_t serialMutex;

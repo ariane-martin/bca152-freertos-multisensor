@@ -17,7 +17,6 @@ typedef struct
 
 void sensors_init(void);
 void sensor_task(void *pvParameters);
-float sensors_get_latest_temperature(void);
 
 #ifdef __cplusplus
 }

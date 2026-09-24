@@ -22,6 +22,7 @@ void app_main(void)
     printf("System starting...\n");
 
     sensor_queue = xQueueCreate(5, sizeof(SensorData));
+    alarm_queue = xQueueCreate(5, sizeof(SensorData));
 
     system_events = xEventGroupCreate();
 
@@ -45,8 +46,14 @@ void app_main(void)
 
     if (sensor_queue == NULL)
     {
-    printf("Failed to create sensor queue\n");
-    return;
+        printf("Failed to create sensor queue\n");
+        return;
+    }
+
+    if (alarm_queue == NULL)
+    {
+        printf("Failed to create alarm queue\n");
+        return;
     }
 
     sensors_init();

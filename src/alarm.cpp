@@ -6,7 +6,7 @@
 #include "rtos_objects.h"
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
@@ -28,43 +28,61 @@ void alarm_task(void *pvParameters)
     gpio_set_level(BUZZER_PIN, 0);
 
     AlarmState previous_alarm = ALARM_NORMAL;
+    SensorData data;
 
     while (1)
     {
-        if (system_is_active())
+        /* Block until SensorTask sends new sensor data */
+        if (xQueueReceive(
+                alarm_queue,
+                &data,
+                portMAX_DELAY) == pdPASS)
         {
-            AlarmState alarm =
-                evaluateTemperature(
-                    sensors_get_latest_temperature()
-                );
-
-            if (alarm != previous_alarm)
+            if (system_is_active())
             {
-                xSemaphoreTake(serialMutex, portMAX_DELAY);
+                AlarmState alarm =
+                    evaluateTemperature(data.temperature);
 
-                if (alarm == ALARM_LOW_TEMPERATURE)
+                if (alarm != previous_alarm)
                 {
-                    printf("ALARM: TEMPERATURE TOO LOW\n");
+                    xSemaphoreTake(serialMutex, portMAX_DELAY);
+
+                    if (alarm == ALARM_LOW_TEMPERATURE)
+                    {
+                        printf("ALARM: TEMPERATURE TOO LOW\n");
+                    }
+                    else if (alarm == ALARM_HIGH_TEMPERATURE)
+                    {
+                        printf("ALARM: TEMPERATURE TOO HIGH\n");
+                    }
+                    else
+                    {
+                        printf("ALARM: TEMPERATURE NORMAL\n");
+                    }
+
+                    xSemaphoreGive(serialMutex);
+
+                    previous_alarm = alarm;
                 }
-                else if (alarm == ALARM_HIGH_TEMPERATURE)
+
+                if (alarm != ALARM_NORMAL)
                 {
-                    printf("ALARM: TEMPERATURE TOO HIGH\n");
+                    xEventGroupSetBits(
+                        system_events,
+                        EVENT_ALARM
+                    );
                 }
                 else
                 {
-                    printf("ALARM: TEMPERATURE NORMAL\n");
+                    xEventGroupClearBits(
+                        system_events,
+                        EVENT_ALARM
+                    );
                 }
 
-                xSemaphoreGive(serialMutex);
-
-                previous_alarm = alarm;
-            }
-
-            if (alarm != ALARM_NORMAL)
-            {
-                xEventGroupSetBits(
-                    system_events,
-                    EVENT_ALARM
+                gpio_set_level(
+                    BUZZER_PIN,
+                    alarm != ALARM_NORMAL
                 );
             }
             else
@@ -73,25 +91,11 @@ void alarm_task(void *pvParameters)
                     system_events,
                     EVENT_ALARM
                 );
+
+                gpio_set_level(BUZZER_PIN, 0);
+
+                previous_alarm = ALARM_NORMAL;
             }
-
-            gpio_set_level(
-                BUZZER_PIN,
-                alarm != ALARM_NORMAL
-            );
         }
-        else
-        {
-            xEventGroupClearBits(
-                system_events,
-                EVENT_ALARM
-            );
-
-            gpio_set_level(BUZZER_PIN, 0);
-
-            previous_alarm = ALARM_NORMAL;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
