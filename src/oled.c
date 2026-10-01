@@ -184,6 +184,11 @@ void oled_write_string(const char *text)
             const uint8_t dot[5] = {0x00,0x60,0x60,0x00,0x00};
             memcpy(character, dot, 5);
         }
+        else if (c == '%')
+        {
+            const uint8_t percent[5] = {0x63,0x13,0x08,0x64,0x63};
+            memcpy(character, percent, 5);
+        }
         else if (c == ' ')
         {
             /* character remains blank */

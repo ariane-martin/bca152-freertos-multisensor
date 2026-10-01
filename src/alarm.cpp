@@ -9,23 +9,29 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
-
+#include "driver/ledc.h"
 #include "driver/gpio.h"
 
 #define BUZZER_PIN GPIO_NUM_26
 
 void alarm_task(void *pvParameters)
 {
-    gpio_config_t buzzer_config = {};
+    ledc_timer_config_t buzzer_timer = {};
+    buzzer_timer.speed_mode = LEDC_LOW_SPEED_MODE;
+    buzzer_timer.duty_resolution = LEDC_TIMER_10_BIT;
+    buzzer_timer.timer_num = LEDC_TIMER_0;
+    buzzer_timer.freq_hz = 2000;
+    buzzer_timer.clk_cfg = LEDC_AUTO_CLK;
+    ledc_timer_config(&buzzer_timer);
 
-    buzzer_config.pin_bit_mask = (1ULL << BUZZER_PIN);
-    buzzer_config.mode = GPIO_MODE_OUTPUT;
-    buzzer_config.pull_up_en = GPIO_PULLUP_DISABLE;
-    buzzer_config.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    buzzer_config.intr_type = GPIO_INTR_DISABLE;
-
-    gpio_config(&buzzer_config);
-    gpio_set_level(BUZZER_PIN, 0);
+    ledc_channel_config_t buzzer_channel = {};
+    buzzer_channel.gpio_num = BUZZER_PIN;
+    buzzer_channel.speed_mode = LEDC_LOW_SPEED_MODE;
+    buzzer_channel.channel = LEDC_CHANNEL_0;
+    buzzer_channel.timer_sel = LEDC_TIMER_0;
+    buzzer_channel.duty = 0;
+    buzzer_channel.hpoint = 0;
+    ledc_channel_config(&buzzer_channel);
 
     AlarmState previous_alarm = ALARM_NORMAL;
     SensorData data;
@@ -80,10 +86,34 @@ void alarm_task(void *pvParameters)
                     );
                 }
 
-                gpio_set_level(
-                    BUZZER_PIN,
-                    alarm != ALARM_NORMAL
-                );
+                if (alarm != ALARM_NORMAL)
+                {
+                    // Turn buzzer ON: 2 kHz tone at 50% duty cycle
+                    ledc_set_duty(
+                        LEDC_LOW_SPEED_MODE,
+                        LEDC_CHANNEL_0,
+                        512
+                    );
+
+                    ledc_update_duty(
+                        LEDC_LOW_SPEED_MODE,
+                        LEDC_CHANNEL_0
+                    );
+                }
+                else
+                {
+                    // Turn buzzer OFF
+                    ledc_set_duty(
+                        LEDC_LOW_SPEED_MODE,
+                        LEDC_CHANNEL_0,
+                        0
+                    );
+
+                    ledc_update_duty(
+                        LEDC_LOW_SPEED_MODE,
+                        LEDC_CHANNEL_0
+                    );
+                }
             }
             else
             {
@@ -92,8 +122,16 @@ void alarm_task(void *pvParameters)
                     EVENT_ALARM
                 );
 
-                gpio_set_level(BUZZER_PIN, 0);
+                ledc_set_duty(
+                LEDC_LOW_SPEED_MODE,
+                LEDC_CHANNEL_0,
+                0
+            );
 
+            ledc_update_duty(
+                LEDC_LOW_SPEED_MODE,
+                LEDC_CHANNEL_0
+            );
                 previous_alarm = ALARM_NORMAL;
             }
         }
